@@ -1,0 +1,334 @@
+<!doctype html>
+<html>
+
+<head>
+    <title>Socket.io Chat App</title>
+    <style>
+      html,body {
+            font-family: Arial, sans-serif;
+            background-color: #E5DDD5;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            height: 100%;
+        }
+        :root {
+    --chat-height: 100vh;  /* Entire height of the viewport */
+}
+        #app {
+            display: flex;
+            height: 100%;
+        }
+        #users li {
+    padding: 8px 12px;
+    margin: 5px 0;
+    border-radius: 15px; /* You can adjust this value to achieve the desired roundness */
+    background-color: #34495E; /* Slightly darker shade of #2C3E50 for contrast */
+    max-height: calc(100vh - 40px);
+  }
+
+        #users {
+            background-color: #2C3E50;
+            width: 30%;
+            color: white;
+            list-style: none;
+            padding: 20px;
+            overflow-y: auto;
+            border-color:#2C3E50 ;
+            height: 100vh;
+            overflow-y:auto;
+            top: 0;               /* Stick to the top */
+            bottom: 0;  
+
+            
+        }
+
+        #chat {
+
+            width: 70%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        #messages {
+          color: #2C3E50;
+            list-style: none;
+            padding: 20px;
+            overflow-y: auto;
+            flex-grow: 1;
+            max-height: calc(100vh - 30px);
+        }
+
+        #form {
+            display: flex;
+            background-color: #F0F0F0;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+        }
+
+        #name {
+            margin-right: 10px;
+            flex-basis: 15%;
+        }
+
+        #m {
+            flex-grow: 1;
+            margin-right: 10px;
+        }
+
+        #m, #name {
+            padding: 10px;
+            border-radius: 10px;
+            border: none;
+        }
+
+        button {
+            background-color: #25D366;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+        }
+
+        .message-own {
+            text-align: right;
+            margin: 5px 0;
+        }
+
+        .message-own .msg-content {
+            display: inline-block;
+            background-color: #DCF8C6;
+            border-radius: 8px 8px 0 8px;
+            padding: 8px 10px;
+            max-width: 70%;
+        }
+
+        .message-other {
+            text-align: left;
+            margin: 5px 0;
+        }
+
+        .message-other .msg-content {
+            display: inline-block;
+            background-color: #FFFFFF;
+            border-radius: 8px 8px 8px 0;
+            padding: 8px 10px;
+            max-width: 70%;
+        }
+        /* Adding some basic modal styles for visual appeal */
+        #helpModal {
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+
+        .modal-content {
+            position: relative;
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+        }
+
+        .close {
+            color: #aaaaaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: #000;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        #usernameModal {
+            display: none; 
+            position: fixed;
+            z-index: 2;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+
+        .username-modal-content {
+            background-color: #001f3f;  /* Deep Navy */
+            margin: 15% auto;
+            padding: 20px;
+            border: 2px solid gold;
+            width: 40%;
+            text-align: center;
+        }
+
+        #usernameInput {
+            padding: 10px;
+            margin: 10px 0;
+            border: none;
+            border-bottom: 2px solid silver;
+            background-color: transparent;
+            color: gold;
+        }
+
+        #usernameSubmit {
+            background-color: gold;
+            border: none;
+            color: #001f3f;  /* Deep Navy */
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+  <div id="usernameModal" class="username-modal">
+    <div class="username-modal-content">
+      <h2 style="color: gold;">Enter Your Name</h2>
+      <input type="text" id="usernameInput" placeholder="Your Name">
+      <button id="usernameSubmit">Enter Chat</button>
+    </div>
+  </div>
+    <div id="helpModal" style="display: none;">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="helpContent"></div>
+        </div>
+    </div>
+
+    <div id="app">
+      <ul id="users"></ul>
+      <div id="chat">
+          <ul id="messages"></ul>
+          <form id="form" action="">
+              <input id="name" autocomplete="off" placeholder="Enter your name" />
+              <input id="m" autocomplete="off" placeholder="Message" />
+              <button style="background-color: #001f3f ;">Send</button>
+          </form>
+      </div>
+  </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Define the modal and its close behavior
+        const modal = document.getElementById("helpModal");
+        const span = document.getElementsByClassName("close")[0];
+
+        span.onclick = function () {
+            modal.style.display = "none";
+        }
+
+        window.onclick = function (event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        function generateHelpDialog() {
+    const emojiMap = {
+        'react': '⚛️',
+        'woah': '😯',
+        'hey': '👋',
+        'lol': '😂',
+        'like': '❤️',
+        'congratulations': '🎉'
+    };
+
+    let content = "Keywords and Emojis:\n";
+    for (let keyword in emojiMap) {
+        content += `${keyword}: ${emojiMap[keyword]}\n`;
+    }
+    content += "</ul><h3>Commands and Formatting</h3><ul>";
+    content += "<li><strong>/news</strong>: Get the latest news</li>";
+    content += "<li><strong>/calc(expression)</strong>: Calculate a mathematical expression. For example, /calc(2+2) will return 4.</li>";
+    content += "<li><strong>*text*</strong>: Make text italic</li>";
+
+    content += "</ul>";
+    
+    return content;
+    
+}
+
+        function showHelpModal() {
+            document.getElementById("helpContent").innerHTML = generateHelpDialog();
+            modal.style.display = "block";
+        }
+
+        function formatMessageText(text) {
+    // Convert *some text* to italic using <em>some text</em>
+    text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+    // Map for word to emoji conversion
+    const emojiMap = {
+        'react': '⚛️',
+        'woah': '😯',
+        'hey': '👋',
+        'lol': '😂',
+        'like': '❤️',
+        'congratulations': '🎉'
+    };
+
+    // Replace keywords with their corresponding emojis
+    for (let keyword in emojiMap) {
+        let regex = new RegExp('\\b' + keyword + '\\b', 'gi'); // using \b to ensure we match whole words only
+        text = text.replace(regex, emojiMap[keyword]);
+    }
+
+    return text;
+}
+
+
+        $(function () {
+            const socket = io();
+            const $name = $('#name');
+            const $m = $('#m');
+            
+            let username = prompt('Enter your name:');
+
+            $name.val(username).prop('disabled', true);
+
+            $('#form').submit(function () {
+                socket.emit('chat message', { name: username, text: $m.val() });
+                $m.val('');
+                return false;
+            });
+
+            socket.on('chat message', function (msg) {
+                if (msg.text.toLowerCase() === '/help') {
+                    showHelpModal(); // Instead of alert, show the modal
+                    return;
+                }
+                let formattedMessage = formatMessageText(msg.text);
+                $('#messages').append($('<li>').html(msg.name + ': ' + formattedMessage));
+            });
+
+            socket.on('update users', function (users) {
+                $('#users').empty();
+                users.forEach(user => {
+                    $('#users').append($('<li>').text(user.name));
+                });
+            });
+
+            socket.emit('new user', username);
+        });
+    </script>
+</body>
+
+</html>
